@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace ParallelLINQ
@@ -11,8 +12,12 @@ namespace ParallelLINQ
         static void Main(string[] args)
         {
 
-            ParallelLINQ();
-
+            //ParallelLINQ();
+            //DeferredQueryExecution();
+            //ControllingConcurrency();
+            //HandlingExceptionsPLINQ();
+            //CancellingPLINQ();
+            SettingUpMergeOptions();
         }
 
 
@@ -122,6 +127,26 @@ namespace ParallelLINQ
         /// </summary>
         static void DeferredQueryExecution()
         {
+            int[] sourceData = new int[20];
+            for (int i = 0; i < sourceData.Length; i++)
+            {
+                sourceData[i] = i + 1;
+            }
+            var resultData = sourceData.AsParallel().Where(item => item % 2 == 0).Select(item =>
+            {
+                Console.WriteLine("Processing Value {0}...", item);
+                return Math.Pow(item, 2);
+            });
+
+            Console.WriteLine("Checking Deffered Query By Sleeping for 1 second.....");
+            Thread.Sleep(1000);
+            Console.WriteLine("Sleep Complete");
+            foreach (var result in resultData)
+            {
+                Console.WriteLine("Resutl = " + result);
+            }
+            Console.WriteLine();
+
 
         }
 
@@ -130,13 +155,183 @@ namespace ParallelLINQ
         /// </summary>
         static void ControllingConcurrency()
         {
+            int[] sourceData = new int[15];
+            for (int i = 0; i < sourceData.Length; i++)
+            {
+                sourceData[i] = i + 1;
+            }
 
+
+            //Forcing Parallelism
+            var result1 = sourceData
+                .AsParallel()
+                .WithExecutionMode(ParallelExecutionMode.ForceParallelism)
+                .Where(item => item % 2 == 0)
+                .Select(item => item);
+
+            //Limiting Parallelism
+            var result2 = sourceData
+                .AsParallel()
+                .WithDegreeOfParallelism(2)
+                .Select(item => Math.Pow(item, 2));
+
+            //Forcing Sequential Execution
+            var result3 = sourceData
+                .AsParallel()
+                .WithDegreeOfParallelism(2)
+                .Where(item => item % 2 == 0)
+                .Select(item => Math.Pow(item, 2))
+                .AsSequential()
+                .Select(item => item * item);
+
+            Console.WriteLine("Result 1");
+            foreach (var result in result1)
+            {
+                Console.WriteLine(result);
+            }
+            Console.WriteLine();
+
+            Console.WriteLine("Result 2");
+            foreach (var result in result2)
+            {
+                Console.WriteLine(result);
+            }
+            Console.WriteLine();
+
+            Console.WriteLine("Result 3");
+            foreach (var result in result3)
+            {
+                Console.WriteLine(result);
+            }
+            Console.WriteLine();
         }
 
         /// <summary>
         /// Listing 6-14
         /// </summary>
         static void HandlingExceptionsPLINQ()
+        {
+            int[] sourceData = new int[1000];
+            for (int i = 0; i < sourceData.Length; i++)
+            {
+                sourceData[i] = i + 1;
+            }
+
+            var result1 = sourceData
+                .AsParallel()
+                .WithExecutionMode(ParallelExecutionMode.ForceParallelism)
+                .WithDegreeOfParallelism(3)
+                .Where(item => item % 2 == 0)
+                .Select(item =>
+                {
+                    if (item == 86)
+                    {
+                        Console.WriteLine("Throwwwwwwwwwwwwwwwwwwwwwing....");
+                        throw new NullReferenceException();
+                    }
+                    return item;
+                });
+
+            try
+            {
+                foreach (var result in result1)
+                {
+                    Console.WriteLine(result);
+                }
+
+            }
+            catch (AggregateException aggException)
+            {
+                aggException.Handle(ex =>
+                {
+                    Console.WriteLine("Exception Handled " + ex.ToString());
+                    return true;
+                });
+            }
+        }
+
+        /// <summary>
+        /// Listing 6-15
+        /// </summary>
+        static void CancellingPLINQ()
+        {
+            int[] sourceData = new int[10000];
+            for (int i = 0; i < sourceData.Length; i++)
+            {
+                sourceData[i] = i + 1;
+            }
+
+            CancellationTokenSource source = new CancellationTokenSource();
+
+            var result1 = sourceData
+                .AsParallel()
+                .WithCancellation(source.Token)
+                .Where(item => item % 2 == 0);
+
+            Task.Factory.StartNew(() =>
+            {
+                Thread.Sleep(2000);
+                source.Cancel();
+                Console.WriteLine("Token Cancelled!!");
+            });
+
+            try
+            {
+                foreach (var result in result1)
+                {
+                    Console.WriteLine(result);
+                }
+            }
+            catch (OperationCanceledException opEx)
+            {
+                Console.WriteLine("Operation Cancelled!!!" + opEx.Message);
+            }
+        }
+
+        /// <summary>
+        /// Listing 6-16
+        /// </summary>
+        static void SettingUpMergeOptions()
+        {
+            int[] sourceData = new int[10];
+            for (int i = 0; i < sourceData.Length; i++)
+            {
+                sourceData[i] = i + 1;
+            }
+
+            var result = sourceData.AsParallel().WithMergeOptions(ParallelMergeOptions.FullyBuffered).Select(item =>
+            {
+                Console.WriteLine("Processing Item: {0}", item);
+                return Math.Pow(item, 2);
+            });
+
+
+            foreach (var value in result)
+            {
+                Console.WriteLine("Result:{0}", value);
+            }
+        }
+
+        /// <summary>
+        /// Listing 6-17, 6-18
+        /// </summary>
+        static void CustomPartitioning()
+        {
+
+        }
+
+        /// <summary>
+        /// Listing 6-19
+        /// </summary>
+        static void CustomAggregation()
+        {
+
+        }
+
+        /// <summary>
+        /// Listing 6-20
+        /// </summary>
+        static void GeneralParallelRanges()
         {
 
         }
