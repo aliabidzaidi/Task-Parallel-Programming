@@ -17,7 +17,11 @@ namespace ParallelLINQ
             //ControllingConcurrency();
             //HandlingExceptionsPLINQ();
             //CancellingPLINQ();
-            SettingUpMergeOptions();
+            //SettingUpMergeOptions();
+            //CustomAggregation();
+            GeneralParallelRanges();
+
+            Console.ReadKey();
         }
 
 
@@ -317,7 +321,8 @@ namespace ParallelLINQ
         /// </summary>
         static void CustomPartitioning()
         {
-
+            //Create a class for static partitioner 
+            //Consume that class and run as parallel on linq queries
         }
 
         /// <summary>
@@ -325,7 +330,18 @@ namespace ParallelLINQ
         /// </summary>
         static void CustomAggregation()
         {
+            int[] sourceData = new int[10];
+            for (int i = 0; i < sourceData.Length; i++)
+            {
+                sourceData[i] = i + 1;
+            }
+            var resultData = sourceData.AsParallel().Aggregate(
+                0.0,
+                (subTotal, item) => subTotal += Math.Pow(item, 2),
+                (total, subTotal) => total += subTotal,
+                total => total / 2);
 
+            Console.WriteLine("Result = {0}", resultData);
         }
 
         /// <summary>
@@ -333,7 +349,29 @@ namespace ParallelLINQ
         /// </summary>
         static void GeneralParallelRanges()
         {
+            int[] sourceData = new int[10];
+            for (int i = 0; i < sourceData.Length; i++)
+            {
+                sourceData[i] = i + 1;
+            }
 
+            IEnumerable<int> resultRange = ParallelEnumerable.Range(0, 10).Where(item => item % 2 == 0).Select(item => item);
+
+            IEnumerable<double> resultRepeat = ParallelEnumerable.Repeat(10, 10).Where(item => item % 2 == 0).Select(item => Math.Pow(item, 2));
+
+
+            Console.WriteLine("Range Result!!");
+            foreach (int x in resultRange)
+            {
+                Console.WriteLine(x);
+            }
+
+            Console.WriteLine("\nRepeat Result!!");
+            foreach(double x in resultRepeat)
+            {
+                Console.WriteLine(x);
+            }
         }
+
     }
 }
